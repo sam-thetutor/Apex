@@ -32,6 +32,22 @@ export const BASE_TOKENS: Record<string, Token> = {
     address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
     icon: '🪙',
   },
+  WETH: {
+    symbol: 'WETH',
+    name: 'Wrapped Ethereum',
+    decimals: 18,
+    caip19: 'eip155:8453/erc20:0x4200000000000000000000000000000000000006',
+    address: '0x4200000000000000000000000000000000000006',
+    icon: '💎',
+  },
+  AERO: {
+    symbol: 'AERO',
+    name: 'Aerodrome Finance',
+    decimals: 18,
+    caip19: 'eip155:8453/erc20:0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+    address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+    icon: '✈️',
+  },
 }
 
 export function getTokenBySymbol(symbol: string): Token | undefined {

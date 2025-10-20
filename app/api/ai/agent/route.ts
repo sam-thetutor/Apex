@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if asking for specific token balance
-    const tokens = ['eth', 'usdc', 'dai']
+    const tokens = ['eth', 'usdc', 'dai', 'weth', 'aero', 'brett', 'toshi', 'axl', 'virtual', 'prime']
     for (const token of tokens) {
       if (lowerMessage.includes(token)) {
         const tokenSymbol = token.toUpperCase()
         const result = await balanceTool.func({
-          tokenSymbol: tokenSymbol as 'ETH' | 'USDC' | 'DAI',
+          tokenSymbol: tokenSymbol as 'ETH' | 'USDC' | 'DAI' | 'WETH' | 'AERO' | 'BRETT' | 'TOSHI' | 'AXL' | 'VIRTUAL' | 'PRIME',
           walletAddress: walletAddress || '0x0000000000000000000000000000000000000000',
         })
         return NextResponse.json({ response: result })

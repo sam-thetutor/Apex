@@ -22,23 +22,63 @@ export function PortfolioOverview() {
 
     fetchProfile()
 
-    // Fetch real balances
+    // Fetch user tokens and balances
     const fetchBalances = async () => {
       if (address) {
         try {
-          // Call the portfolio API
-          const response = await fetch('/api/ai/agent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: 'What is my portfolio?',
-              walletAddress: address,
-            }),
-          })
-          const data = await response.json()
-          console.log('Portfolio data:', data)
+          // First, get user's tokens from database
+          const tokensResponse = await fetch(`/api/tokens?address=${address}`)
+          const tokensData = await tokensResponse.json()
+          
+          if (tokensData.tokens && tokensData.tokens.length > 0) {
+            // Fetch balances for each token
+            const tokensWithBalances = await Promise.all(
+              tokensData.tokens.map(async (token: any) => {
+                try {
+                  // Call balance service for each token
+                  const response = await fetch('/api/ai/agent', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      message: `What is my ${token.symbol} balance?`,
+                      walletAddress: address,
+                    }),
+                  })
+                  const data = await response.json()
+                  
+                  // Parse the balance from the response
+                  const balanceMatch = data.response?.match(/Balance:\s*([\d.]+)/)
+                  const usdMatch = data.response?.match(/\$([\d,]+\.?\d*)/)
+                  
+                  return {
+                    symbol: token.symbol,
+                    name: token.name,
+                    balance: balanceMatch ? balanceMatch[1] : '0.00',
+                    usdValue: usdMatch ? usdMatch[1].replace(/,/g, '') : '0.00',
+                    icon: token.icon || '🪙',
+                  }
+                } catch (error) {
+                  console.error(`Error fetching ${token.symbol} balance:`, error)
+                  return {
+                    symbol: token.symbol,
+                    name: token.name,
+                    balance: '0.00',
+                    usdValue: '0.00',
+                    icon: token.icon || '🪙',
+                  }
+                }
+              })
+            )
+            
+            // Filter out tokens with zero balance
+            const nonZeroTokens = tokensWithBalances.filter(
+              (token) => parseFloat(token.balance) > 0
+            )
+            
+            setTokens(nonZeroTokens)
+          }
         } catch (error) {
           console.error('Error fetching portfolio:', error)
         }
@@ -54,41 +94,7 @@ export function PortfolioOverview() {
   }
 
   // Mock tokens for now - will be replaced with real data
-  const mockTokens = [
-    {
-      symbol: 'ETH',
-      name: 'Ethereum',
-      balance: '0.000',
-      usdValue: '0.00',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      symbol: 'USDC',
-      name: 'USD Coin',
-      balance: '0.00',
-      usdValue: '0.00',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      symbol: 'DAI',
-      name: 'Dai Stablecoin',
-      balance: '0.00',
-      usdValue: '0.00',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-  ]
+  const mockTokens: any[] = []
 
   const displayTokens = tokens.length > 0 ? tokens : mockTokens
   const totalValue = displayTokens.reduce(

@@ -1,6 +1,7 @@
 import { ethers } from 'ethers'
 import { BASE_CONFIG } from './base-config'
-import { BASE_TOKENS } from '@/lib/tokens/base-tokens'
+import { BASE_TOKENS, Token } from '@/lib/tokens/base-tokens'
+import { getUserTokens, CustomToken } from '@/lib/db/token-service'
 
 // ERC-20 ABI for balanceOf
 const ERC20_ABI = [
@@ -100,6 +101,7 @@ export async function fetchTokenBalance(
 
 /**
  * Fetch balance for a specific token (ETH or ERC-20)
+ * Supports both built-in tokens and custom tokens from database
  */
 export async function fetchBalanceForToken(
   tokenSymbol: string,
@@ -108,10 +110,17 @@ export async function fetchBalanceForToken(
   balance: string
   usdValue: string
 }> {
-  const token = BASE_TOKENS[tokenSymbol.toUpperCase()]
+  // First check built-in tokens
+  let token: Token | CustomToken | undefined = BASE_TOKENS[tokenSymbol.toUpperCase()]
   
+  // If not found in built-in tokens, check user's custom tokens
   if (!token) {
-    throw new Error(`Token ${tokenSymbol} not supported`)
+    const userTokens = await getUserTokens(userAddress)
+    token = userTokens.find((t) => t.symbol.toUpperCase() === tokenSymbol.toUpperCase())
+    
+    if (!token) {
+      throw new Error(`Token ${tokenSymbol} not found in your portfolio`)
+    }
   }
   
   // Handle native ETH
@@ -129,6 +138,7 @@ export async function fetchBalanceForToken(
 
 /**
  * Fetch complete portfolio for a user
+ * Fetches balances for all tokens in user's portfolio (default + custom)
  */
 export async function fetchPortfolio(userAddress: string): Promise<
   {
@@ -138,23 +148,36 @@ export async function fetchPortfolio(userAddress: string): Promise<
   }[]
 > {
   try {
-    const tokens = Object.keys(BASE_TOKENS)
+    // Get user's tokens from database (includes default + custom tokens)
+    const userTokens = await getUserTokens(userAddress)
     const portfolio = []
     
-    for (const tokenSymbol of tokens) {
+    for (const token of userTokens) {
       try {
-        const balanceData = await fetchBalanceForToken(tokenSymbol, userAddress)
+        let balanceData
+        
+        // Handle native ETH
+        if (token.address === 'native') {
+          balanceData = await fetchETHBalance(userAddress)
+        } else {
+          // Handle ERC-20 tokens
+          const result = await fetchTokenBalance(token.address, userAddress)
+          balanceData = {
+            balance: result.balance,
+            usdValue: result.usdValue,
+          }
+        }
         
         // Only include tokens with non-zero balance
         const balanceNum = parseFloat(balanceData.balance)
         if (balanceNum > 0) {
           portfolio.push({
-            symbol: tokenSymbol,
+            symbol: token.symbol,
             ...balanceData,
           })
         }
       } catch (error) {
-        console.error(`Error fetching ${tokenSymbol} balance:`, error)
+        console.error(`Error fetching ${token.symbol} balance:`, error)
         // Continue with other tokens
       }
     }

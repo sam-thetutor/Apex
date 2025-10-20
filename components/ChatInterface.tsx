@@ -21,7 +21,7 @@ export function ChatInterface() {
       setMessages([
         {
           role: 'assistant',
-          content: '👋 Welcome to Apex Base! I can help you send, swap, and check token balances on Base. Try saying "Send 100 USDC to @alice" or "How much ETH do I have?"',
+          content: '👋 Welcome to Apex Base! I can help you:\n\n• Send, swap, and check token balances\n• Add custom tokens to your portfolio\n\nTry saying:\n• "How much ETH do I have?"\n• "What\'s my portfolio?"\n• "Add token 0x..." (to add a custom token)',
           timestamp: new Date(),
         },
       ])
@@ -46,6 +46,60 @@ export function ChatInterface() {
     setIsLoading(true)
 
     try {
+      // Check if user wants to add a token
+      // Flexible pattern to catch variations like:
+      // "add token 0x...", "add this token to my list 0x...", "add token to portfolio 0x..."
+      const addTokenPattern = /add\s+(?:this\s+)?(?:token\s+)?(?:to\s+(?:my\s+)?(?:list|portfolio)\s+)?(?:with\s+)?(?:address\s+)?(0x[a-fA-F0-9]{40})/i
+      const addTokenMatch = userInput.match(addTokenPattern)
+      
+      if (addTokenMatch && address) {
+        const tokenAddress = addTokenMatch[1]
+        
+        // Validate contract address
+        if (!tokenAddress) {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: `❌ Please provide the token contract address:\n\nExample: "Add token 0x1234..." or "Add token with address 0x1234..."\n\nI'll automatically fetch the token name, symbol, and decimals from the blockchain.`,
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, assistantMessage])
+          setIsLoading(false)
+          return
+        }
+        
+        // Show loading message
+        const loadingMessage: Message = {
+          role: 'assistant',
+          content: `🔍 Adding token...\n\nFetching token details from blockchain...`,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, loadingMessage])
+        
+        const addTokenResponse = await fetch('/api/ai/add-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userAddress: address,
+            tokenAddress: tokenAddress,
+          }),
+        })
+
+        const addTokenResult = await addTokenResponse.json()
+        
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: addTokenResult.success 
+            ? `✅ Token Added Successfully!\n\n📝 **${addTokenResult.token.symbol}** (${addTokenResult.token.name})\n\n📍 Address: \`${tokenAddress}\`\n\nYou can now:\n• Check your balance: "How much ${addTokenResult.token.symbol} do I have?"\n• Send tokens: "Send 100 ${addTokenResult.token.symbol} to @user"\n• Swap tokens: "Swap 50 ${addTokenResult.token.symbol} for USDC"\n• View in portfolio: Visit the Portfolio page`
+            : `❌ Failed to Add Token\n\n${addTokenResult.error}\n\nPlease make sure:\n• The contract address is valid on Base\n• The address is for an ERC-20 token\n• The token contract is deployed`,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+        setIsLoading(false)
+        return
+      }
+
       // First, parse the intent
       const intentResponse = await fetch('/api/ai/parse-intent', {
         method: 'POST',
@@ -135,18 +189,22 @@ To complete this swap, I'll need to open the swap interface. Would you like to p
       case 'help':
         return `💡 Here are some commands you can try:
 
+• "How much ETH do I have?" - Check your balance
+• "What's my portfolio?" - View all your tokens
+• "Add token 0x..." - Add a custom token to your portfolio
 • "Send 100 USDC to @alice" - Send tokens to a Farcaster user
 • "Swap 0.5 ETH for USDC" - Exchange tokens
-• "How much USDC do I have?" - Check your balance
 
 Need more help? Visit the Help page!`
       
       default:
         return `🤔 I'm not sure what you'd like to do. Try saying:
 
+• "How much ETH do I have?"
+• "What's my portfolio?"
+• "Add token 0x..." (to add a custom token)
 • "Send 100 USDC to @alice"
 • "Swap 0.5 ETH for USDC"
-• "How much USDC do I have?"
 
 Or type "help" for more examples!`
     }
