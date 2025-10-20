@@ -11,8 +11,16 @@ export function PortfolioOverview() {
 
   useEffect(() => {
     // Get user profile from Farcaster SDK
-    const profile = sdk.context.user
-    setUserProfile(profile)
+    const fetchProfile = async () => {
+      try {
+        const context = await sdk.context
+        setUserProfile(context.user)
+      } catch (error) {
+        console.error('Error fetching Farcaster profile:', error)
+      }
+    }
+
+    fetchProfile()
 
     // Fetch real balances
     const fetchBalances = async () => {
