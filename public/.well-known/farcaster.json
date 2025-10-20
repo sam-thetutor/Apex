@@ -1,9 +1,9 @@
 {
-  "accountAssociation": {
-    "header": "",
-    "payload": "",
-    "signature": ""
-  },
+    "accountAssociation": {
+        "header": "eyJmaWQiOjEwNzg0MTcsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg4NUE0YjA5ZmIwNzg4ZjFDNTQ5YTY4ZEMyRWRBZTNGOTdhZWI1RGQ3In0",
+        "payload": "eyJkb21haW4iOiJhcGV4LWFscGhhLWxpdmlkLnZlcmNlbC5hcHAifQ",
+        "signature": "OxGBfzyiNYOgKC2/bncx0g3gccOMbam5GsCpvN5dk3w7R8whKLb9/62LmKQbShTcZWopJLlhkrvGJYm+gwE9Nxw="
+    },
   "miniapp": {
     "version": "1",
     "name": "Apex",
@@ -27,7 +27,7 @@
       "defi"
     ],
     "heroImageUrl": "https://apex-alpha-livid.vercel.app/screenshot-1.svg",
-    "tagline": "AI-powered token management on Base",
+    "tagline": "Prompt,defi,earn",
     "ogTitle": "Apex - AI Token Assistant",
     "ogDescription": "Send, receive, and swap tokens through natural language commands",
     "ogImageUrl": "https://apex-alpha-livid.vercel.app/screenshot-1.svg",
