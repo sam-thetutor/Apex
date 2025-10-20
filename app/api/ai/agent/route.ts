@@ -3,6 +3,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { balanceTool } from '@/lib/ai/tools/balance-tool'
 import { portfolioTool } from '@/lib/ai/tools/portfolio-tool'
+import { sendTool } from '@/lib/ai/tools/send-tool'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,24 @@ export async function POST(request: NextRequest) {
 
     // Simple tool routing based on message content
     const lowerMessage = message.toLowerCase()
+    
+    // Check if asking to send tokens (handle typos like "sendf", "send ", etc.)
+    if (lowerMessage.includes('send') || lowerMessage.includes('transfer') || lowerMessage.includes('pay')) {
+      // Extract parameters for send tool - more flexible pattern
+      const sendPattern = /(?:send\w*|transfer|pay)\s+([\d.]+)\s+(\w+)\s+to\s+(0x[a-fA-F0-9]{40}|@\w+|\d+)/i
+      const sendMatch = message.match(sendPattern)
+      
+      if (sendMatch) {
+        const [, amount, tokenSymbol, recipient] = sendMatch
+        const result = await sendTool.func({
+          tokenSymbol,
+          recipientAddress: recipient,
+          amount,
+          walletAddress: walletAddress || '0x0000000000000000000000000000000000000000',
+        })
+        return NextResponse.json({ response: result })
+      }
+    }
     
     // Check if asking for portfolio
     if (lowerMessage.includes('portfolio') || lowerMessage.includes('all tokens') || lowerMessage.includes('total value')) {

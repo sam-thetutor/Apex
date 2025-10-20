@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react'
 import { MessageBubble } from './MessageBubble'
 import { useWallet } from '@/contexts/WalletContext'
+import { getBaseExplorerUrl } from '@/lib/blockchain/base-config'
+import { ConfirmationData } from './ConfirmationBubble'
 
 interface Message {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'confirmation'
   content: string
   timestamp: Date
+  confirmationData?: ConfirmationData
+  status?: 'pending' | 'success' | 'error'
+  txHash?: string
 }
 
 export function ChatInterface() {
@@ -143,8 +148,60 @@ export function ChatInterface() {
           timestamp: new Date(),
         }
         setMessages((prev) => [...prev, assistantMessage])
-      } else if (intent.action === 'send' || intent.action === 'swap') {
-        // Show transaction preview for signing actions
+      } else if (intent.action === 'send') {
+        // Handle send action
+        if (!address) {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: '❌ Please connect your wallet first to send tokens.',
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, assistantMessage])
+          setIsLoading(false)
+          return
+        }
+
+        // Call send tool to prepare transaction
+        const sendToolResponse = await fetch('/api/ai/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            message: userInput,
+            walletAddress: address
+          }),
+        })
+
+        const sendToolResult = await sendToolResponse.json()
+        const parsedResult = JSON.parse(sendToolResult.response)
+
+        if (parsedResult.success) {
+          // Create confirmation message with inline buttons
+          const confirmationMessage: Message = {
+            role: 'confirmation',
+            content: `📤 Ready to send ${parsedResult.amount} ${parsedResult.tokenSymbol}`,
+            timestamp: new Date(),
+            confirmationData: {
+              tokenSymbol: parsedResult.tokenSymbol,
+              amount: parsedResult.amount,
+              recipientAddress: parsedResult.recipientAddress,
+              tokenAddress: parsedResult.tokenAddress,
+              tokenDecimals: parsedResult.tokenDecimals,
+            },
+            status: 'pending',
+          }
+          setMessages((prev) => [...prev, confirmationMessage])
+        } else {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: `❌ ${parsedResult.message}`,
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, assistantMessage])
+        }
+      } else if (intent.action === 'swap') {
+        // Show transaction preview for swap actions (not implemented yet)
         const aiResponse = generateResponse(intent, userInput)
         
         const assistantMessage: Message = {
@@ -166,15 +223,85 @@ export function ChatInterface() {
       }
     } catch (error) {
       console.error('Error processing command:', error)
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: '❌ Sorry, I encountered an error processing your command. Please try again.',
-        timestamp: new Date(),
+      
+      // Check if it might be a send command with a typo
+      const lowerInput = input.toLowerCase()
+      if (lowerInput.includes('send') || lowerInput.includes('transfer') || lowerInput.includes('pay')) {
+        const errorMessage: Message = {
+          role: 'assistant',
+          content: '❌ I detected you want to send tokens, but I couldn\'t parse the command properly.\n\nPlease try:\n• "Send 0.00001 ETH to 0x..."\n• "Transfer 100 USDC to 0x..."\n• "Pay 50 DAI to 0x..."',
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      } else {
+        const errorMessage: Message = {
+          role: 'assistant',
+          content: '❌ Sorry, I encountered an error processing your command. Please try again.',
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSendSuccess = async (txHash: string, confirmationData: ConfirmationData) => {
+    if (!address) return
+
+    // Store transaction in database via API
+    try {
+      await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: address,
+          txHash,
+          type: 'send',
+          tokenSymbol: confirmationData.tokenSymbol,
+          amount: confirmationData.amount,
+          recipientAddress: confirmationData.recipientAddress,
+          status: 'pending',
+          network: 'base',
+          metadata: {
+            tokenAddress: confirmationData.tokenAddress,
+            tokenDecimals: confirmationData.tokenDecimals,
+          },
+        }),
+      })
+    } catch (error) {
+      console.error('Error storing transaction:', error)
+    }
+
+    // Update the confirmation message to show success
+    const explorerUrl = getBaseExplorerUrl(txHash)
+    setMessages((prev) => prev.map((msg) => {
+      if (msg.role === 'confirmation' && msg.confirmationData === confirmationData) {
+        return {
+          ...msg,
+          status: 'success' as const,
+          txHash,
+          content: `✅ Transaction Sent Successfully!\n\n📤 Sent ${confirmationData.amount} ${confirmationData.tokenSymbol}\n\n🔗 [View on BaseScan](${explorerUrl})\n\nTransaction Hash: \`${txHash}\``,
+        }
+      }
+      return msg
+    }))
+  }
+
+  const handleSendError = (error: string, confirmationData: ConfirmationData) => {
+    // Update the confirmation message to show error
+    setMessages((prev) => prev.map((msg) => {
+      if (msg.role === 'confirmation' && msg.confirmationData === confirmationData) {
+        return {
+          ...msg,
+          status: 'error' as const,
+          content: `❌ Transaction Failed\n\n${error}\n\nPlease try again or check your wallet connection.`,
+        }
+      }
+      return msg
+    }))
   }
 
   const generateResponse = (intent: any, userInput: string): string => {
@@ -223,43 +350,49 @@ Or type "help" for more examples!`
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
-          <MessageBubble key={index} message={message} />
+          <MessageBubble 
+            key={index} 
+            message={message}
+            onConfirm={handleSendSuccess}
+            onCancel={() => {}}
+            onError={handleSendError}
+          />
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2 max-w-xs border border-white/20 shadow-lg">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2 max-w-xs border border-white/20 shadow-lg">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Input */}
-      <div className="border-t border-white/20 bg-white/60 backdrop-blur-xl p-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type your command... (e.g. Send 100 USDC to @alice)"
-            className="flex-1 px-4 text-black py-3 backdrop-blur-sm border border-white/40 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-lg text-sm"
-            disabled={isLoading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full hover:from-teal-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-2xl shadow-teal-500/50 transition-all"
-          >
-            Send
-          </button>
+        {/* Input */}
+        <div className="border-t border-white/20 bg-white/60 backdrop-blur-xl p-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Type your command... (e.g. Send 100 USDC to @alice)"
+              className="flex-1 px-4 text-black py-3 backdrop-blur-sm border border-white/40 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-lg text-sm"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full hover:from-teal-500 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-2xl shadow-teal-500/50 transition-all"
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   )
 }
 
