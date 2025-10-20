@@ -1,0 +1,44 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Apex",
+    "iconUrl": "https://apex-alpha-livid.vercel.app/icon-512.svg",
+    "homeUrl": "https://apex-alpha-livid.vercel.app",
+    "imageUrl": "https://apex-alpha-livid.vercel.app/screenshot-1.svg",
+    "buttonTitle": "🚀 Open Apex",
+    "splashImageUrl": "https://apex-alpha-livid.vercel.app/icon-512.svg",
+    "splashBackgroundColor": "#14b8a6",
+    "subtitle": "AI-powered token management",
+    "description": "Send, receive, and swap tokens on Base through natural language commands powered by AI.",
+    "screenshotUrls": [
+      "https://apex-alpha-livid.vercel.app/screenshot-1.svg"
+    ],
+    "primaryCategory": "finance",
+    "tags": [
+      "ai",
+      "base",
+      "tokens",
+      "wallet",
+      "defi"
+    ],
+    "heroImageUrl": "https://apex-alpha-livid.vercel.app/screenshot-1.svg",
+    "tagline": "AI-powered token management on Base",
+    "ogTitle": "Apex - AI Token Assistant",
+    "ogDescription": "Send, receive, and swap tokens through natural language commands",
+    "ogImageUrl": "https://apex-alpha-livid.vercel.app/screenshot-1.svg",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "wallet.getEthereumProvider",
+      "actions.sendToken",
+      "actions.swapToken"
+    ]
+  }
+}
+

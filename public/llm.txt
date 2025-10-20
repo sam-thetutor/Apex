@@ -1,0 +1,156 @@
+# Apex - AI Token Assistant
+
+## Overview
+Apex is an AI-powered token management application built for the Base blockchain. It allows users to send, receive, and swap tokens through natural language commands using Farcaster integration.
+
+## Features
+
+### 1. AI-Powered Chat Interface
+- Natural language commands for all token operations
+- GPT-4 powered intent parsing
+- Context-aware responses
+
+### 2. Wallet Integration
+- Native Farcaster wallet support
+- MetaMask fallback for standalone mode
+- Secure wallet connection management
+
+### 3. Token Operations
+- **Balance Checking**: Query ETH, USDC, and DAI balances
+- **Portfolio View**: See all token holdings with USD values
+- **Send Tokens**: Send tokens to Farcaster users or addresses
+- **Swap Tokens**: Exchange between supported tokens
+
+### 4. Supported Tokens
+- ETH (Native Base ETH)
+- USDC (USD Coin on Base)
+- DAI (Dai Stablecoin on Base)
+
+## Usage
+
+### Natural Language Commands
+
+#### Balance Queries
+- "How much ETH do I have?"
+- "Check my USDC balance"
+- "What's my portfolio?"
+- "Show me all my tokens"
+
+#### Send Operations
+- "Send 100 USDC to @alice"
+- "Transfer 0.5 ETH to @bob"
+- "Send 50 DAI to 0x1234..."
+
+#### Swap Operations
+- "Swap 0.5 ETH for USDC"
+- "Exchange 100 USDC for DAI"
+- "Convert 50 DAI to ETH"
+
+#### Help
+- "help"
+- "What can you do?"
+- "Show me examples"
+
+## Technical Stack
+
+### Frontend
+- Next.js 15 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS v4
+
+### AI & Blockchain
+- LangChain for AI orchestration
+- OpenAI GPT-4 for natural language processing
+- ethers.js for blockchain interactions
+- Base Network (Layer 2)
+
+### Integration
+- Farcaster Mini App SDK
+- MetaMask EIP-1193 provider
+
+## Architecture
+
+### Pages
+- `/` - Homepage with hero section
+- `/chat` - AI chat interface
+- `/portfolio` - Portfolio overview
+- `/transactions` - Transaction history
+- `/help` - Help and documentation
+
+### API Routes
+- `/api/ai/parse-intent` - Parse user commands
+- `/api/ai/agent` - LangChain agent for balance queries
+
+### Components
+- `ChatInterface` - Main chat UI
+- `Navbar` - Navigation with wallet connection
+- `HeroSection` - Landing page hero
+- `MessageBubble` - Chat message display
+- `QuickActions` - Quick action buttons
+- `PortfolioOverview` - Portfolio display
+- `TransactionList` - Transaction history
+
+### Context
+- `WalletContext` - Global wallet state management
+
+## Blockchain Integration
+
+### Base Network
+- Chain ID: 8453 (Mainnet)
+- RPC: https://mainnet.base.org
+- Explorer: https://basescan.org
+
+### Token Addresses
+- ETH: Native (0x0)
+- USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+- DAI: 0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb
+
+## Security
+
+- Server-side API key management
+- EIP-1193 wallet standard compliance
+- Secure transaction signing
+- Input validation and sanitization
+
+## Deployment
+
+- Hosted on Vercel
+- Environment variables for API keys
+- Automatic deployments from Git
+- Custom domain support
+
+## User Experience
+
+### Design
+- Glassmorphism UI with teal/cyan theme
+- Responsive design (mobile-first)
+- Smooth animations and transitions
+- Intuitive navigation
+
+### Performance
+- Optimized bundle sizes
+- Lazy loading for components
+- Efficient blockchain queries
+- Cached API responses
+
+## Future Enhancements
+
+- Multi-chain support
+- Advanced swap routing
+- Transaction history tracking
+- Price alerts and notifications
+- Social features (sharing, referrals)
+
+## Support
+
+For issues or questions, users can:
+- Use the built-in help command
+- Visit the help page
+- Contact support through the app
+
+## Version
+
+Current version: 0.1.0
+Last updated: 2024
+
