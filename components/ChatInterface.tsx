@@ -88,10 +88,18 @@ export function ChatInterface() {
 
         const addTokenResult = await addTokenResponse.json()
         
+        // Refetch portfolio if token was added successfully
+        if (addTokenResult.success && typeof window !== 'undefined') {
+          const refetchPortfolio = (window as any).refetchPortfolio
+          if (refetchPortfolio) {
+            setTimeout(() => refetchPortfolio(), 1000) // Refetch after 1 second
+          }
+        }
+        
         const assistantMessage: Message = {
           role: 'assistant',
           content: addTokenResult.success 
-            ? `✅ Token Added Successfully!\n\n📝 **${addTokenResult.token.symbol}** (${addTokenResult.token.name})\n\n📍 Address: \`${tokenAddress}\`\n\nYou can now:\n• Check your balance: "How much ${addTokenResult.token.symbol} do I have?"\n• Send tokens: "Send 100 ${addTokenResult.token.symbol} to @user"\n• Swap tokens: "Swap 50 ${addTokenResult.token.symbol} for USDC"\n• View in portfolio: Visit the Portfolio page`
+            ? `✅ Token Added Successfully!\n\n📝 **${addTokenResult.token.symbol}** (${addTokenResult.token.name})\n\n📍 Address: \`${tokenAddress}\`\n\nYou can now:\n• Check your balance: "How much ${addTokenResult.token.symbol} do I have?"\n• Send tokens: "Send 100 ${addTokenResult.token.symbol} to @user"\n• Swap tokens: "Swap 50 ${addTokenResult.token.symbol} for USDC"\n• View in portfolio: Visit the Portfolio page\n\n💡 Your portfolio will update automatically!`
             : `❌ Failed to Add Token\n\n${addTokenResult.error}\n\nPlease make sure:\n• The contract address is valid on Base\n• The address is for an ERC-20 token\n• The token contract is deployed`,
           timestamp: new Date(),
         }

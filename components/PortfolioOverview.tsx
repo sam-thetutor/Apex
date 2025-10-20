@@ -1,13 +1,73 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { sdk } from '@farcaster/miniapp-sdk'
 import { useWallet } from '@/contexts/WalletContext'
+
+const CACHE_KEY_PREFIX = 'apex_portfolio_cache_'
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function PortfolioOverview() {
   const { address } = useWallet()
   const [userProfile, setUserProfile] = useState<any>(null)
   const [tokens, setTokens] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  // Check if cached data is still valid
+  const isCacheValid = (cacheTimestamp: number): boolean => {
+    return Date.now() - cacheTimestamp < CACHE_DURATION
+  }
+
+  // Fetch portfolio balances from API
+  const fetchBalances = useCallback(async (forceRefresh = false) => {
+    if (!address) return
+
+    setIsLoading(true)
+    try {
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cacheKey = `${CACHE_KEY_PREFIX}${address}`
+        const cachedData = localStorage.getItem(cacheKey)
+        
+        if (cachedData) {
+          try {
+            const { portfolio, timestamp } = JSON.parse(cachedData)
+            if (isCacheValid(timestamp)) {
+              console.log('Using cached portfolio data')
+              setTokens(portfolio)
+              setLastUpdated(new Date(timestamp))
+              setIsLoading(false)
+              return
+            }
+          } catch (error) {
+            console.error('Error reading cache:', error)
+          }
+        }
+      }
+
+      // Fetch fresh data
+      console.log('Fetching fresh portfolio data...')
+      const response = await fetch(`/api/portfolio/balances?address=${address}`)
+      const data = await response.json()
+
+      if (data.success && data.portfolio) {
+        setTokens(data.portfolio)
+        setLastUpdated(new Date(data.timestamp))
+        
+        // Cache the data
+        const cacheKey = `${CACHE_KEY_PREFIX}${address}`
+        localStorage.setItem(cacheKey, JSON.stringify({
+          portfolio: data.portfolio,
+          timestamp: data.timestamp,
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching portfolio:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [address])
 
   useEffect(() => {
     // Get user profile from Farcaster SDK
@@ -22,71 +82,21 @@ export function PortfolioOverview() {
 
     fetchProfile()
 
-    // Fetch user tokens and balances
-    const fetchBalances = async () => {
-      if (address) {
-        try {
-          // First, get user's tokens from database
-          const tokensResponse = await fetch(`/api/tokens?address=${address}`)
-          const tokensData = await tokensResponse.json()
-          
-          if (tokensData.tokens && tokensData.tokens.length > 0) {
-            // Fetch balances for each token
-            const tokensWithBalances = await Promise.all(
-              tokensData.tokens.map(async (token: any) => {
-                try {
-                  // Call balance service for each token
-                  const response = await fetch('/api/ai/agent', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      message: `What is my ${token.symbol} balance?`,
-                      walletAddress: address,
-                    }),
-                  })
-                  const data = await response.json()
-                  
-                  // Parse the balance from the response
-                  const balanceMatch = data.response?.match(/Balance:\s*([\d.]+)/)
-                  const usdMatch = data.response?.match(/\$([\d,]+\.?\d*)/)
-                  
-                  return {
-                    symbol: token.symbol,
-                    name: token.name,
-                    balance: balanceMatch ? balanceMatch[1] : '0.00',
-                    usdValue: usdMatch ? usdMatch[1].replace(/,/g, '') : '0.00',
-                    icon: token.icon || '🪙',
-                  }
-                } catch (error) {
-                  console.error(`Error fetching ${token.symbol} balance:`, error)
-                  return {
-                    symbol: token.symbol,
-                    name: token.name,
-                    balance: '0.00',
-                    usdValue: '0.00',
-                    icon: token.icon || '🪙',
-                  }
-                }
-              })
-            )
-            
-            // Filter out tokens with zero balance
-            const nonZeroTokens = tokensWithBalances.filter(
-              (token) => parseFloat(token.balance) > 0
-            )
-            
-            setTokens(nonZeroTokens)
-          }
-        } catch (error) {
-          console.error('Error fetching portfolio:', error)
-        }
+    // Fetch balances when wallet connects
+    if (address) {
+      fetchBalances()
+    }
+  }, [address, fetchBalances])
+
+  // Expose refetch function globally for other components to use
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).refetchPortfolio = () => {
+        console.log('Refetching portfolio...')
+        fetchBalances(true)
       }
     }
-
-    fetchBalances()
-  }, [address])
+  }, [fetchBalances])
 
   const formatAddress = (addr: string) => {
     if (!addr) return ''
@@ -137,17 +147,42 @@ export function PortfolioOverview() {
 
       {/* Total Value */}
       <div className="bg-white/70 backdrop-blur-md rounded-xl border border-white/40 p-6 shadow-lg">
-        <p className="text-sm text-gray-600">Total Portfolio Value</p>
-        <p className="text-3xl font-bold text-gray-900 mt-1">
-          ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-600">Total Portfolio Value</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">
+              ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          {isLoading && (
+            <div className="flex items-center gap-2 text-primary-600">
+              <div className="w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm">Loading...</span>
+            </div>
+          )}
+        </div>
+        {lastUpdated && !isLoading && (
+          <p className="text-xs text-gray-500 mt-2">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </p>
+        )}
       </div>
 
       {/* Token List */}
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold text-gray-900 px-1">
-          Your Tokens
-        </h2>
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Your Tokens
+          </h2>
+          {!isLoading && (
+            <button
+              onClick={() => fetchBalances(true)}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              Refresh
+            </button>
+          )}
+        </div>
         {displayTokens.map((token) => (
           <div
             key={token.symbol}
