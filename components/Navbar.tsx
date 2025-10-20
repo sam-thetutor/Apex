@@ -86,18 +86,9 @@ export function Navbar() {
             {/* Wallet Connection */}
             <div className="flex items-center space-x-3">
               {isConnected ? (
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-green-700">
-                      {formatAddress(address)}
-                    </span>
-                  </div>
-                  {isInMiniApp && (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      Farcaster
-                    </span>
-                  )}
+                <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-green-700">Connected</span>
                 </div>
               ) : (
                 <button
