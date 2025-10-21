@@ -47,7 +47,7 @@ Determine the intent from these options:
 2. "swap" - User wants to exchange/swap tokens
 3. "balance" - User wants to check balance/portfolio
 4. "question" - User has a general question
-5. "add_token" - User wants to add a custom token
+5. "add_token" - User wants to add a custom token to their portfolio
 
 Extract any relevant entities (token symbols, amounts, addresses).
 
@@ -70,6 +70,8 @@ Respond with ONLY valid JSON:
       return await handleSwapIntent(intentResult.entities, context)
     } else if (intentResult.intent === 'balance') {
       return await handleBalanceIntent(context)
+    } else if (intentResult.intent === 'add_token') {
+      return await handleAddTokenIntent(intentResult.entities, context)
     } else if (intentResult.intent === 'question') {
       return await handleQuestionIntent(message, context)
     } else if (intentResult.needsClarification) {
@@ -229,6 +231,56 @@ async function handleBalanceIntent(context: ConversationContext) {
     intent: 'balance',
     response,
     needsAction: false
+  }
+}
+
+async function handleAddTokenIntent(
+  entities: Record<string, any>,
+  context: ConversationContext
+) {
+  const { tokenAddress } = entities
+
+  if (!tokenAddress) {
+    return {
+      intent: 'add_token',
+      response: "I need the token contract address to add it to your portfolio.\n\nPlease provide:\n- The token contract address (e.g., 0x1234...)\n\nExample: \"Add token 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb\"",
+      needsAction: false
+    }
+  }
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3002'}/api/ai/add-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userAddress: context.userAddress,
+        tokenAddress: tokenAddress
+      })
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      return {
+        intent: 'add_token',
+        response: `❌ Failed to Add Token\n\n${result.error}\n\nPlease make sure:\n• The contract address is valid on Base\n• The address is for an ERC-20 token\n• The token contract is deployed`,
+        needsAction: false
+      }
+    }
+
+    return {
+      intent: 'add_token',
+      response: `✅ Token Added Successfully!\n\n📝 **${result.token.symbol}** (${result.token.name})\n\n📍 Address: \`${tokenAddress}\`\n\nYou can now:\n• Check your balance: "How much ${result.token.symbol} do I have?"\n• Send tokens: "Send 100 ${result.token.symbol} to @user"\n• Swap tokens: "Swap 50 ${result.token.symbol} for USDC"\n• View in portfolio: Visit the Portfolio page\n\n💡 Your portfolio will update automatically!`,
+      needsAction: false
+    }
+  } catch (error) {
+    return {
+      intent: 'add_token',
+      response: 'Failed to add token. Please try again.',
+      needsAction: false
+    }
   }
 }
 
