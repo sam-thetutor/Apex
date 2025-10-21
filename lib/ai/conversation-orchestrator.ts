@@ -51,6 +51,16 @@ Determine the intent from these options:
 
 Extract any relevant entities (token symbols, amounts, addresses).
 
+IMPORTANT: For swap intents, extract:
+- sellToken: The token to sell (e.g., "ETH", "USDC")
+- buyToken: The token to buy (e.g., "USDC", "DAI")
+- amount: The amount to sell
+
+Examples:
+"swap 0.5 ETH for USDC" → {"intent":"swap","entities":{"sellToken":"ETH","buyToken":"USDC","amount":"0.5"}}
+"swap eth to usdc" → {"intent":"swap","entities":{"sellToken":"ETH","buyToken":"USDC","amount":""}}
+"swap 100 USDC for DAI" → {"intent":"swap","entities":{"sellToken":"USDC","buyToken":"DAI","amount":"100"}}
+
 Respond with ONLY valid JSON:
 {
   "intent": "send",
