@@ -49,8 +49,11 @@ export async function getSwapQuote(params: SwapParams): Promise<SwapQuote> {
     // Convert amount to wei/smallest unit
     const amountIn = ethers.parseUnits(params.sellAmount, params.sellTokenDecimals)
     
-    // Build swap path
-    const path = [params.sellTokenAddress, params.buyTokenAddress]
+    // Build swap path (use WETH address for native ETH)
+    const wethAddress = BASE_TOKENS.WETH.address
+    const sellAddress = params.sellTokenAddress === 'native' ? wethAddress : params.sellTokenAddress
+    const buyAddress = params.buyTokenAddress === 'native' ? wethAddress : params.buyTokenAddress
+    const path = [sellAddress, buyAddress]
     
     // Get expected output amount
     const amounts = await router.getAmountsOut(amountIn, path)
@@ -100,15 +103,17 @@ export function validateSwap(params: SwapParams): {
     }
   }
   
-  // Validate token addresses
-  if (!ethers.isAddress(params.sellTokenAddress)) {
+  // Validate token addresses (allow 'native' for ETH)
+  const isSellTokenValid = params.sellTokenAddress === 'native' || ethers.isAddress(params.sellTokenAddress)
+  if (!isSellTokenValid) {
     return {
       valid: false,
       error: 'Invalid sell token address.',
     }
   }
   
-  if (!ethers.isAddress(params.buyTokenAddress)) {
+  const isBuyTokenValid = params.buyTokenAddress === 'native' || ethers.isAddress(params.buyTokenAddress)
+  if (!isBuyTokenValid) {
     return {
       valid: false,
       error: 'Invalid buy token address.',
