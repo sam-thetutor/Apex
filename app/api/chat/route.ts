@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processMessage } from '@/lib/ai/conversation-orchestrator'
+import { fetchPortfolio } from '@/lib/blockchain/balance-service'
 
 // In-memory conversation storage (in production, use Redis or database)
 const conversations = new Map<string, any>()
@@ -26,11 +27,27 @@ export async function POST(request: NextRequest) {
       timestamp: new Date()
     })
     
+    // Fetch portfolio data
+    let portfolio: Array<{
+      symbol: string
+      balance: string
+      usdValue: string
+    }> = []
+    let recentTransactions: Array<any> = []
+    
+    try {
+      portfolio = await fetchPortfolio(userId)
+      console.log('Fetched portfolio:', portfolio)
+    } catch (error) {
+      console.error('Error fetching portfolio:', error)
+      // Continue with empty portfolio if fetch fails
+    }
+    
     // Prepare context
     const context = {
       userAddress: userId,
-      portfolio: [], // TODO: Fetch from portfolio API
-      recentTransactions: [], // TODO: Fetch from transactions API
+      portfolio: portfolio,
+      recentTransactions: recentTransactions,
       conversationHistory: conversation.messages.map((m: any) => ({
         role: m.role,
         content: m.content

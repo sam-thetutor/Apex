@@ -85,7 +85,7 @@ Respond with ONLY valid JSON:
     } else if (intentResult.intent === 'swap') {
       return await handleSwapIntent(intentResult.entities, context)
     } else if (intentResult.intent === 'balance') {
-      return await handleBalanceIntent(context)
+      return await handleBalanceIntent(context, message)
     } else if (intentResult.intent === 'add_token') {
       return await handleAddTokenIntent(intentResult.entities, context)
     } else if (intentResult.intent === 'question') {
@@ -226,8 +226,33 @@ async function handleSwapIntent(
   }
 }
 
-async function handleBalanceIntent(context: ConversationContext) {
+async function handleBalanceIntent(context: ConversationContext, message: string) {
   const portfolio = context.portfolio
+  const lowerMessage = message.toLowerCase()
+  
+  // Check if user is asking for a specific token (like ETH)
+  const ethKeywords = ['eth', 'ethereum', 'ether']
+  const isAskingForETH = ethKeywords.some(keyword => lowerMessage.includes(keyword))
+  
+  if (isAskingForETH) {
+    // Find ETH in portfolio
+    const ethToken = portfolio.find(token => token.symbol.toLowerCase() === 'eth')
+    if (ethToken) {
+      return {
+        intent: 'balance',
+        response: `Your ETH balance: ${ethToken.balance} ETH ($${ethToken.usdValue})`,
+        needsAction: false
+      }
+    } else {
+      return {
+        intent: 'balance',
+        response: `Your ETH balance: 0.000000 ETH ($0.00)\n\nYour wallet appears to be empty. Would you like to add some tokens?`,
+        needsAction: false
+      }
+    }
+  }
+  
+  // Handle general portfolio request
   const totalValue = portfolio.reduce((sum, token) => {
     return sum + parseFloat(token.usdValue)
   }, 0)
