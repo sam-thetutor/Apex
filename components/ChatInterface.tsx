@@ -38,8 +38,10 @@ export function ChatInterface() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const [conversationId, setConversationId] = useState<string | null>(null)
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !address) return
 
     const userMessage: Message = {
       role: 'user',
@@ -52,6 +54,90 @@ export function ChatInterface() {
     setInput('')
     setIsLoading(true)
 
+    try {
+      // Call LangGraph API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userInput,
+          userId: address,
+          conversationId: conversationId
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to get response')
+      }
+
+      // Store conversation ID
+      if (result.conversationId) {
+        setConversationId(result.conversationId)
+      }
+
+      // Handle different response types
+      if (result.needsAction && result.actionData?.type === 'send') {
+        // Show send confirmation
+        const confirmationMessage: Message = {
+          role: 'confirmation',
+          content: result.response,
+          timestamp: new Date(),
+          confirmationData: {
+            tokenSymbol: result.actionData.tokenSymbol,
+            tokenAddress: result.actionData.tokenAddress,
+            tokenDecimals: result.actionData.tokenDecimals,
+            recipientAddress: result.actionData.recipientAddress,
+            amount: result.actionData.amount,
+          }
+        }
+        setMessages((prev) => [...prev, confirmationMessage])
+      } else if (result.needsAction && result.actionData?.type === 'swap') {
+        // Show swap confirmation
+        const swapMessage: Message = {
+          role: 'swap',
+          content: result.response,
+          timestamp: new Date(),
+          swapData: {
+            sellToken: result.actionData.sellToken,
+            buyToken: result.actionData.buyToken,
+            amount: result.actionData.amount,
+            sellTokenAddress: result.actionData.sellTokenAddress,
+            buyTokenAddress: result.actionData.buyTokenAddress,
+            sellTokenDecimals: result.actionData.sellTokenDecimals,
+            buyTokenDecimals: result.actionData.buyTokenDecimals,
+            estimatedOutput: result.actionData.estimatedOutput,
+            rate: result.actionData.rate,
+            slippage: result.actionData.slippage,
+          }
+        }
+        setMessages((prev) => [...prev, swapMessage])
+      } else {
+        // Regular text response
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: result.response,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+      }
+
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Error sending message:', error)
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `❌ Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again.`,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setIsLoading(false)
+    }
+
+    // OLD CODE - Keep for add token functionality
     try {
       // Check if user wants to add a token
       // Flexible pattern to catch variations like:
