@@ -314,7 +314,15 @@ Base Blockchain Information:
 - No bank account needed, just a smartphone
 - Works in 10+ African languages
 
-Provide a helpful, accurate, and conversational answer. If the question is about Base specifically, emphasize its benefits for African users.
+Farcaster Information:
+- Farcaster is a decentralized social network protocol built on Ethereum
+- It's like Twitter but decentralized - you own your identity and data
+- Farcaster Mini Apps are apps that run inside Farcaster clients
+- Apex Base is a Farcaster Mini App for Base blockchain
+- Farcaster users can interact with Apex through their Farcaster client
+- Farcaster provides secure wallet integration for Base transactions
+
+Provide a helpful, accurate, and conversational answer. If the question is about Base specifically, emphasize its benefits for African users. If the question is about Farcaster, explain what it is and how it relates to Apex.
 
 Answer in a friendly, conversational tone. Keep responses concise but informative.`
 
