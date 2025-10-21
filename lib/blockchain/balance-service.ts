@@ -175,7 +175,14 @@ export async function fetchPortfolio(userAddress: string): Promise<
         })
       } catch (error) {
         console.error(`Error fetching ${token.symbol} balance:`, error)
-        // Continue with other tokens
+        
+        // For tokens that fail to fetch, show them with 0 balance
+        // This handles tokens with non-standard ERC-20 functions or RPC issues
+        portfolio.push({
+          symbol: token.symbol,
+          balance: '0.000000',
+          usdValue: '0.00',
+        })
       }
     }
     
