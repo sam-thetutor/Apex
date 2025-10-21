@@ -74,13 +74,23 @@ export async function POST(request: NextRequest) {
         icon: '🪙', // Default icon
       }
 
-      await addCustomToken(userAddress, token)
+      try {
+        await addCustomToken(userAddress, token)
 
-      return NextResponse.json({
-        success: true,
-        message: `Token ${symbol} (${name}) added successfully to your portfolio`,
-        token,
-      })
+        return NextResponse.json({
+          success: true,
+          message: `Token ${symbol} (${name}) added successfully to your portfolio`,
+          token,
+        })
+      } catch (addError) {
+        // Handle token addition errors (like duplicate token)
+        const addErrorMessage = addError instanceof Error ? addError.message : 'Unknown error'
+        console.error('Error adding token to portfolio:', addError)
+        return NextResponse.json(
+          { error: addErrorMessage },
+          { status: 400 }
+        )
+      }
     } catch (error) {
       console.error('Error fetching token info:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
