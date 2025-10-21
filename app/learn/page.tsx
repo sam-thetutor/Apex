@@ -35,17 +35,17 @@ export default function LearnPage() {
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
+        {/* <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
             Learn Base for Africa
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
             Master Base blockchain and revolutionize how you send money, run businesses, and build the future of Africa
           </p>
-        </div>
+        </div> */}
 
         {/* Category Filter */}
-        <div className="flex flex-wrap gap-3 mb-8 justify-center">
+        {/* <div className="flex flex-wrap gap-3 mb-8 justify-center">
           {categories.map(category => (
             <button
               key={category.id}
@@ -60,7 +60,7 @@ export default function LearnPage() {
               <span>{category.name}</span>
             </button>
           ))}
-        </div>
+        </div> */}
 
         {/* Difficulty Filter */}
         <div className="flex flex-wrap gap-3 mb-8 justify-center">
@@ -91,7 +91,7 @@ export default function LearnPage() {
         </div>
 
         {/* Stats */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-6 text-center">
             <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400 mb-2">
               {BASE_TUTORIALS.length}
@@ -110,7 +110,7 @@ export default function LearnPage() {
             </div>
             <div className="text-gray-600 dark:text-gray-400">Total Learning Time</div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   )

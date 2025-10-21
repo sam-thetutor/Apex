@@ -42,11 +42,7 @@ export function TutorialCard({ tutorial, onClick, isCompleted }: TutorialCardPro
             }`}>
               {tutorial.difficulty}
             </span>
-            {tutorial.africanContext && (
-              <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                🌍 African Focus
-              </span>
-            )}
+            
           </div>
         </div>
       </div>
