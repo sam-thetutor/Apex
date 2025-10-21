@@ -276,14 +276,13 @@ export function ChatInterface() {
     }
 
     // Update the confirmation message to show success
-    const explorerUrl = getBaseExplorerUrl(txHash)
     setMessages((prev) => prev.map((msg) => {
       if (msg.role === 'confirmation' && msg.confirmationData === confirmationData) {
         return {
           ...msg,
           status: 'success' as const,
           txHash,
-          content: `✅ Transaction Sent Successfully!\n\n📤 Sent ${confirmationData.amount} ${confirmationData.tokenSymbol}\n\n🔗 [View on BaseScan](${explorerUrl})\n\nTransaction Hash: \`${txHash}\``,
+          content: `✨ Sent ${confirmationData.amount} ${confirmationData.tokenSymbol} successfully!`,
         }
       }
       return msg
@@ -297,7 +296,7 @@ export function ChatInterface() {
         return {
           ...msg,
           status: 'error' as const,
-          content: `❌ Transaction Failed\n\n${error}\n\nPlease try again or check your wallet connection.`,
+          content: `❌ Transaction failed. Please try again.`,
         }
       }
       return msg
