@@ -168,14 +168,11 @@ export async function fetchPortfolio(userAddress: string): Promise<
           }
         }
         
-        // Only include tokens with non-zero balance
-        const balanceNum = parseFloat(balanceData.balance)
-        if (balanceNum > 0) {
-          portfolio.push({
-            symbol: token.symbol,
-            ...balanceData,
-          })
-        }
+        // Include all tokens (even with 0 balance)
+        portfolio.push({
+          symbol: token.symbol,
+          ...balanceData,
+        })
       } catch (error) {
         console.error(`Error fetching ${token.symbol} balance:`, error)
         // Continue with other tokens
