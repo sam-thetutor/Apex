@@ -40,33 +40,37 @@ export interface SwapParams {
 }
 
 /**
- * Get a swap quote from Aerodrome
+ * Get a swap quote
+ * Note: Since we're using Farcaster SDK's swapToken action, we provide a simple quote.
+ * The SDK will handle the actual routing and execution.
  */
 export async function getSwapQuote(params: SwapParams): Promise<SwapQuote> {
   try {
-    const router = new ethers.Contract(AERODROME_ROUTER_V2, ROUTER_ABI, provider)
+    // For now, we'll provide a simple estimate based on common rates
+    // The Farcaster SDK will handle the actual swap execution with proper routing
     
-    // Convert amount to wei/smallest unit
-    const amountIn = ethers.parseUnits(params.sellAmount, params.sellTokenDecimals)
-    
-    // Build swap path (use WETH address for native ETH)
-    const wethAddress = BASE_TOKENS.WETH.address
-    const sellAddress = params.sellTokenAddress === 'native' ? wethAddress : params.sellTokenAddress
-    const buyAddress = params.buyTokenAddress === 'native' ? wethAddress : params.buyTokenAddress
-    const path = [sellAddress, buyAddress]
-    
-    // Get expected output amount
-    const amounts = await router.getAmountsOut(amountIn, path)
-    const amountOut = amounts[1] // Second element is output amount
-    
-    // Calculate rate
     const sellAmountFloat = parseFloat(params.sellAmount)
-    const buyAmountFloat = parseFloat(ethers.formatUnits(amountOut, params.buyTokenDecimals))
-    const rate = (buyAmountFloat / sellAmountFloat).toFixed(6)
+    
+    // Simple rate estimates (these are rough approximations)
+    // In production, you might want to fetch real-time rates from a price API
+    const rateEstimates: Record<string, number> = {
+      'ETH-USDC': 2000, // 1 ETH ≈ 2000 USDC
+      'ETH-DAI': 2000,
+      'USDC-ETH': 0.0005, // 1 USDC ≈ 0.0005 ETH
+      'USDC-DAI': 1,
+      'DAI-USDC': 1,
+      'DAI-ETH': 0.0005,
+    }
+    
+    const pairKey = `${params.sellTokenSymbol}-${params.buyTokenSymbol}`
+    const estimatedRate = rateEstimates[pairKey] || 1
+    
+    // Calculate estimated output
+    const buyAmountFloat = sellAmountFloat * estimatedRate
+    const buyAmount = buyAmountFloat.toFixed(6)
     
     // Apply slippage (default 0.5%)
     const slippage = params.slippage || 50 // 50 basis points = 0.5%
-    const amountOutMin = (amountOut * BigInt(10000 - slippage)) / BigInt(10000)
     
     // Estimate gas (rough estimate)
     const gasEstimate = '150000' // Typical gas for swap
@@ -75,11 +79,11 @@ export async function getSwapQuote(params: SwapParams): Promise<SwapQuote> {
       sellToken: params.sellTokenSymbol,
       buyToken: params.buyTokenSymbol,
       sellAmount: params.sellAmount,
-      buyAmount: ethers.formatUnits(amountOut, params.buyTokenDecimals),
-      rate,
+      buyAmount,
+      rate: estimatedRate.toFixed(6),
       slippage: slippage / 100, // Convert to percentage
       gasEstimate,
-      route: path,
+      route: [params.sellTokenAddress, params.buyTokenAddress],
     }
   } catch (error) {
     console.error('Error getting swap quote:', error)
