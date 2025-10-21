@@ -1,10 +1,16 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { sendTool } from '@/lib/ai/tools/send-tool'
 import { swapTool } from '@/lib/ai/tools/swap-tool'
+import { getRelevantContext, buildQuestionPrompt } from './context-helper'
 
 const llm = new ChatOpenAI({
   modelName: 'gpt-4',
   temperature: 0.3,
+})
+
+const questionLlm = new ChatOpenAI({
+  modelName: 'gpt-4',
+  temperature: 0.7, // Higher temperature for more creative/helpful answers
 })
 
 interface ConversationContext {
@@ -298,42 +304,23 @@ async function handleQuestionIntent(
   message: string,
   context: ConversationContext
 ) {
-  const prompt = `You are a helpful AI assistant for Base blockchain. Answer the user's question based on your knowledge and the context provided.
-
-User's Question: "${message}"
-
-Context:
-- User's Portfolio: ${JSON.stringify(context.portfolio)}
-- Recent Transactions: ${context.recentTransactions.length} transactions
-
-Base Blockchain Information:
-- Base is a Layer 2 blockchain built on Ethereum by Coinbase
-- Transactions cost less than $0.01 (compared to $10-15 with traditional banks)
-- Transactions are confirmed in just 2 seconds
-- Perfect for Africans sending money home (saves 99.9% in fees)
-- No bank account needed, just a smartphone
-- Works in 10+ African languages
-
-Farcaster Information:
-- Farcaster is a decentralized social network protocol built on Ethereum
-- It's like Twitter but decentralized - you own your identity and data
-- Farcaster Mini Apps are apps that run inside Farcaster clients
-- Apex Base is a Farcaster Mini App for Base blockchain
-- Farcaster users can interact with Apex through their Farcaster client
-- Farcaster provides secure wallet integration for Base transactions
-
-Provide a helpful, accurate, and conversational answer. If the question is about Base specifically, emphasize its benefits for African users. If the question is about Farcaster, explain what it is and how it relates to Apex.
-
-Answer in a friendly, conversational tone. Keep responses concise but informative.`
-
   try {
-    const response = await llm.invoke(prompt)
+    // Determine what context is relevant
+    const relevantContext = getRelevantContext(message, context)
+    
+    // Build dynamic prompt with only relevant context
+    const prompt = buildQuestionPrompt(message, context, relevantContext)
+    
+    // Use questionLlm (higher temperature) for more helpful answers
+    const response = await questionLlm.invoke(prompt)
+    
     return {
       intent: 'question',
       response: response.content as string,
       needsAction: false
     }
   } catch (error) {
+    console.error('Error in question handler:', error)
     return {
       intent: 'question',
       response: 'I apologize, but I encountered an error while processing your question. Please try again.',

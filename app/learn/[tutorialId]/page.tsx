@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { BASE_TUTORIALS, getTutorialById, Tutorial } from '@/lib/education/base-tutorials'
 import { TUTORIAL_TRANSLATIONS } from '@/lib/education/tutorial-translations'
+import { useWallet } from '@/contexts/WalletContext'
+import { AchievementNotificationManager } from '@/components/gamification/AchievementNotification'
 
 type Language = 'en' | 'fr' | 'sw'
 
@@ -16,6 +18,7 @@ const LANGUAGES = [
 export default function TutorialDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { address } = useWallet()
   const tutorialId = params.tutorialId as string
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
@@ -23,6 +26,12 @@ export default function TutorialDetailPage() {
   const [isCorrect, setIsCorrect] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [language, setLanguage] = useState<Language>('en')
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [quizAnswers, setQuizAnswers] = useState<{ [stepIndex: number]: number }>({})
+  const [completionResult, setCompletionResult] = useState<{
+    pointsEarned: number
+    achievementsUnlocked: string[]
+  } | null>(null)
 
   const tutorial = getTutorialById(tutorialId)
   const translations = TUTORIAL_TRANSLATIONS[tutorialId]
@@ -57,12 +66,74 @@ export default function TutorialDetailPage() {
     setSelectedAnswer(answerIndex)
     setIsCorrect(answerIndex === step.quizQuestion?.correctAnswer)
     setShowResult(true)
+    
+    // Track quiz answer for scoring
+    setQuizAnswers(prev => ({
+      ...prev,
+      [currentStep]: answerIndex
+    }))
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isLastStep) {
-      setCompleted(true)
-      // TODO: Save progress to database
+      if (!address) {
+        alert('Please connect your wallet to complete the tutorial and earn points!')
+        return
+      }
+
+      setIsCompleting(true)
+      try {
+        // Calculate quiz score based on actual answers
+        const quizSteps = steps.filter(step => step.quizQuestion)
+        let correctAnswers = 0
+        let totalQuizzes = quizSteps.length
+
+        if (totalQuizzes > 0) {
+          // Calculate score based on tracked answers
+          quizSteps.forEach((step, stepIndex) => {
+            const userAnswer = quizAnswers[stepIndex]
+            const correctAnswer = step.quizQuestion?.correctAnswer
+            if (userAnswer === correctAnswer) {
+              correctAnswers++
+            }
+          })
+        }
+
+        const quizScore = totalQuizzes > 0 ? Math.round((correctAnswers / totalQuizzes) * 100) : 100
+
+        // Complete tutorial via API
+        const response = await fetch('/api/achievements', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userAddress: address,
+            tutorialId: tutorialId,
+            quizScore: quizScore,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          setCompletionResult({
+            pointsEarned: result.data.pointsEarned,
+            achievementsUnlocked: result.data.achievementsUnlocked,
+          })
+          setCompleted(true)
+        } else {
+          console.error('Failed to complete tutorial:', result.error)
+          // Still show completion UI even if API fails
+          setCompleted(true)
+        }
+      } catch (error) {
+        console.error('Error completing tutorial:', error)
+        // Still show completion UI even if API fails
+        setCompleted(true)
+      } finally {
+        setIsCompleting(false)
+      }
     } else {
       setCurrentStep(currentStep + 1)
       setSelectedAnswer(null)
@@ -83,18 +154,24 @@ export default function TutorialDetailPage() {
       en: {
         title: 'Tutorial Complete!',
         subtitle: 'You\'ve completed',
+        pointsEarned: 'Points Earned',
+        achievementsUnlocked: 'Achievements Unlocked',
         back: 'Back to Learn',
         achievements: 'View Achievements'
       },
       fr: {
         title: 'Tutoriel Terminé!',
         subtitle: 'Vous avez terminé',
+        pointsEarned: 'Points Gagnés',
+        achievementsUnlocked: 'Réalisations Débloquées',
         back: 'Retour à l\'Apprentissage',
         achievements: 'Voir les Réalisations'
       },
       sw: {
         title: 'Mafunzo Yamekamilika!',
         subtitle: 'Umekamilisha',
+        pointsEarned: 'Alama Zilizopatikana',
+        achievementsUnlocked: 'Mafanikio Yamefunguliwa',
         back: 'Rudi kwa Mafunzo',
         achievements: 'Angalia Mafanikio'
       }
@@ -104,14 +181,52 @@ export default function TutorialDetailPage() {
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 flex items-center justify-center">
+        {/* Achievement Notifications */}
+        {completionResult && completionResult.achievementsUnlocked.length > 0 && (
+          <AchievementNotificationManager
+            achievements={completionResult.achievementsUnlocked}
+            onAchievementsShown={() => {}}
+          />
+        )}
+        
         <div className="max-w-2xl w-full bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl border border-white/40 dark:border-gray-700/40 p-8 text-center">
           <div className="text-6xl mb-6">🎉</div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             {messages.title}
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-6">
             {messages.subtitle} "{tutorialTitle}"
           </p>
+          
+          {/* Points and Achievements Display */}
+          {completionResult && (
+            <div className="mb-8 space-y-4">
+              <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 rounded-xl p-4">
+                <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mb-1">
+                  +{completionResult.pointsEarned} {messages.pointsEarned}
+                </div>
+                <div className="text-sm text-yellow-600 dark:text-yellow-500">
+                  🏆 Added to your total score
+                </div>
+              </div>
+              
+              {completionResult.achievementsUnlocked.length > 0 && (
+                <div className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl p-4">
+                  <div className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">
+                    🎖️ {messages.achievementsUnlocked}
+                  </div>
+                  <div className="space-y-1">
+                    {completionResult.achievementsUnlocked.map(achievementId => (
+                      <div key={achievementId} className="text-sm text-green-600 dark:text-green-500">
+                        • {achievementId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => router.push('/learn')}
@@ -313,9 +428,19 @@ export default function TutorialDetailPage() {
           <button
             onClick={handleNext}
             disabled={isQuiz && !showResult}
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
           >
-            {isLastStep ? text.completeTutorial : text.next}
+            {isCompleting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Completing...
+              </>
+            ) : (
+              isLastStep ? text.completeTutorial : text.next
+            )}
           </button>
         </div>
       </div>

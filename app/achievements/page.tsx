@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BASE_ACHIEVEMENTS, Achievement } from '@/lib/gamification/base-achievements'
 import { AchievementBadge } from '@/components/gamification/AchievementBadge'
+import { useWallet } from '@/contexts/WalletContext'
 
 export default function AchievementsPage() {
+  const { address } = useWallet()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [userAchievements, setUserAchievements] = useState<string[]>([])
+  const [totalPoints, setTotalPoints] = useState<number>(0)
+  const [progress, setProgress] = useState<{ [achievementId: string]: number }>({})
+  const [isLoading, setIsLoading] = useState(true)
 
   const categories = [
     { id: 'all', name: 'All Achievements', icon: '🏆' },
@@ -15,21 +21,73 @@ export default function AchievementsPage() {
     { id: 'learning', name: 'Learning', icon: '📚' },
   ]
 
-  // Mock data - in production, this would come from the database
-  const userAchievements = [
-    'base-pioneer',
-    'base-native',
-    'african-trailblazer',
-  ]
+  // Fetch user achievements from API
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      if (!address) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/achievements?userAddress=${address}`)
+        const result = await response.json()
+
+        if (result.success) {
+          setUserAchievements(result.data.achievements.unlocked)
+          setTotalPoints(result.data.achievements.totalPoints)
+          setProgress(result.data.achievements.progress)
+        }
+      } catch (error) {
+        console.error('Error fetching achievements:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAchievements()
+  }, [address])
 
   const filteredAchievements = BASE_ACHIEVEMENTS.filter(achievement => {
     return selectedCategory === 'all' || achievement.category === selectedCategory
   })
 
   const unlockedCount = userAchievements.length
-  const totalPoints = BASE_ACHIEVEMENTS
-    .filter(a => userAchievements.includes(a.id))
-    .reduce((sum, a) => sum + a.points, 0)
+  const africanAchievementsUnlocked = BASE_ACHIEVEMENTS
+    .filter(a => a.africanTheme && userAchievements.includes(a.id))
+    .length
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 pb-24 md:pb-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading your achievements...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!address) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 pb-24 md:pb-8 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Connect Your Wallet
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+            Connect your wallet to view your achievements and progress
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-xl font-medium hover:from-cyan-600 hover:to-teal-600 transition-all"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 pb-24 md:pb-8">
@@ -60,7 +118,7 @@ export default function AchievementsPage() {
           </div>
           <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-6 text-center">
             <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-              {BASE_ACHIEVEMENTS.filter(a => a.africanTheme && userAchievements.includes(a.id)).length}
+              {africanAchievementsUnlocked}
             </div>
             <div className="text-gray-600 dark:text-gray-400">African Achievements</div>
           </div>
@@ -91,7 +149,7 @@ export default function AchievementsPage() {
               key={achievement.id}
               achievement={achievement}
               isUnlocked={userAchievements.includes(achievement.id)}
-              progress={userAchievements.includes(achievement.id) ? achievement.requirement.target : 0}
+              progress={progress[achievement.id] || 0}
             />
           ))}
         </div>

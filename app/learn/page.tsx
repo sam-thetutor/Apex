@@ -1,14 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BASE_TUTORIALS, Tutorial } from '@/lib/education/base-tutorials'
 import { TutorialCard } from '@/components/education/TutorialCard'
+import { useWallet } from '@/contexts/WalletContext'
 
 export default function LearnPage() {
   const router = useRouter()
+  const { address } = useWallet()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all')
+  const [completedTutorials, setCompletedTutorials] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const categories = [
     { id: 'all', name: 'All Tutorials', icon: '📚' },
@@ -24,6 +28,31 @@ export default function LearnPage() {
     { id: 'intermediate', name: 'Intermediate' },
     { id: 'advanced', name: 'Advanced' },
   ]
+
+  // Fetch completed tutorials
+  useEffect(() => {
+    const fetchCompletedTutorials = async () => {
+      if (!address) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/achievements?userAddress=${address}`)
+        const result = await response.json()
+
+        if (result.success) {
+          setCompletedTutorials(result.data.progress.tutorialsCompleted || [])
+        }
+      } catch (error) {
+        console.error('Error fetching completed tutorials:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchCompletedTutorials()
+  }, [address])
 
   const filteredTutorials = BASE_TUTORIALS.filter(tutorial => {
     const categoryMatch = selectedCategory === 'all' || tutorial.category === selectedCategory
@@ -86,6 +115,7 @@ export default function LearnPage() {
               key={tutorial.id}
               tutorial={tutorial}
               onClick={() => router.push(`/learn/${tutorial.id}`)}
+              isCompleted={completedTutorials.includes(tutorial.id)}
             />
           ))}
         </div>
