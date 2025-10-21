@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { BASE_TUTORIALS, Tutorial } from '@/lib/education/base-tutorials'
 import { TutorialCard } from '@/components/education/TutorialCard'
 
 export default function LearnPage() {
+  const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all')
 
@@ -83,10 +85,7 @@ export default function LearnPage() {
             <TutorialCard
               key={tutorial.id}
               tutorial={tutorial}
-              onClick={() => {
-                // TODO: Navigate to tutorial detail page
-                console.log('Open tutorial:', tutorial.id)
-              }}
+              onClick={() => router.push(`/learn/${tutorial.id}`)}
             />
           ))}
         </div>
