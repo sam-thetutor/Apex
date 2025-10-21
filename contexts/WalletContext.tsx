@@ -19,12 +19,30 @@ export interface SendTokenResult {
   error?: string
 }
 
+export interface SwapTokenParams {
+  sellTokenAddress: string
+  buyTokenAddress: string
+  sellAmount: string
+  sellTokenDecimals: number
+  buyTokenDecimals: number
+  sellTokenSymbol: string
+  buyTokenSymbol: string
+  slippage?: number
+}
+
+export interface SwapTokenResult {
+  success: boolean
+  txHash?: string
+  error?: string
+}
+
 interface WalletContextType {
   isConnected: boolean
   address: string
   isInMiniApp: boolean | null
   connectWallet: () => Promise<void>
   sendToken: (params: SendTokenParams) => Promise<SendTokenResult>
+  swapTokens: (params: SwapTokenParams) => Promise<SwapTokenResult>
   isLoading: boolean
 }
 
@@ -202,6 +220,77 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const swapTokens = async (params: SwapTokenParams): Promise<SwapTokenResult> => {
+    try {
+      console.log('Swapping tokens:', params)
+
+      if (isInMiniApp) {
+        // Use Farcaster SDK for swapping tokens
+        try {
+          // Convert amount to wei/smallest unit
+          const amountInWei = ethers.parseUnits(params.sellAmount, params.sellTokenDecimals)
+          
+          // Build CAIP-19 asset IDs
+          const sellTokenId = params.sellTokenAddress === 'native' 
+            ? 'eip155:8453/native'
+            : `eip155:8453/erc20:${params.sellTokenAddress}`
+          
+          const buyTokenId = params.buyTokenAddress === 'native' 
+            ? 'eip155:8453/native'
+            : `eip155:8453/erc20:${params.buyTokenAddress}`
+          
+          // Use Farcaster SDK's swapToken action
+          const result = await sdk.actions.swapToken({
+            sellToken: sellTokenId,
+            buyToken: buyTokenId,
+            sellAmount: amountInWei.toString(),
+          })
+
+          console.log('Swap transaction sent via Farcaster SDK:', result)
+          
+          // Extract transaction hash from the result (use first transaction)
+          const txHash = result.success && result.swap && result.swap.transactions.length > 0 
+            ? result.swap.transactions[0] 
+            : undefined
+          
+          if (!result.success) {
+            return {
+              success: false,
+              error: result.reason === 'rejected_by_user' 
+                ? 'Swap rejected by user'
+                : result.error?.message || 'Swap failed',
+            }
+          }
+          
+          return {
+            success: true,
+            txHash,
+          }
+        } catch (error) {
+          console.error('Farcaster SDK swap error:', error)
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          return {
+            success: false,
+            error: `Failed to swap tokens: ${errorMessage}`,
+          }
+        }
+      } else {
+        // MetaMask fallback - would need to implement direct DEX interaction
+        return {
+          success: false,
+          error: 'Swap functionality requires Farcaster wallet',
+        }
+      }
+    } catch (error) {
+      console.error('Error swapping tokens:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return {
+        success: false,
+        error: `Swap failed: ${errorMessage}`,
+      }
+    }
+  }
+
   return (
     <WalletContext.Provider
       value={{
@@ -210,6 +299,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         isInMiniApp,
         connectWallet,
         sendToken,
+        swapTokens,
         isLoading,
       }}
     >

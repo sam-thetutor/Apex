@@ -4,6 +4,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { balanceTool } from '@/lib/ai/tools/balance-tool'
 import { portfolioTool } from '@/lib/ai/tools/portfolio-tool'
 import { sendTool } from '@/lib/ai/tools/send-tool'
+import { swapTool } from '@/lib/ai/tools/swap-tool'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +31,24 @@ export async function POST(request: NextRequest) {
         const result = await sendTool.func({
           tokenSymbol,
           recipientAddress: recipient,
+          amount,
+          walletAddress: walletAddress || '0x0000000000000000000000000000000000000000',
+        })
+        return NextResponse.json({ response: result })
+      }
+    }
+    
+    // Check if asking to swap tokens
+    if (lowerMessage.includes('swap') || lowerMessage.includes('exchange') || lowerMessage.includes('convert')) {
+      // Extract parameters for swap tool
+      const swapPattern = /(?:swap|exchange|convert)\s+([\d.]+)\s+(\w+)\s+(?:for|to|→)\s+(\w+)/i
+      const swapMatch = message.match(swapPattern)
+      
+      if (swapMatch) {
+        const [, amount, sellToken, buyToken] = swapMatch
+        const result = await swapTool.func({
+          sellToken,
+          buyToken,
           amount,
           walletAddress: walletAddress || '0x0000000000000000000000000000000000000000',
         })

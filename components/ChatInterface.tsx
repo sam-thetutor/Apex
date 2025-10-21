@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { MessageBubble } from './MessageBubble'
-import { useWallet } from '@/contexts/WalletContext'
+import { useWallet, SwapTokenParams } from '@/contexts/WalletContext'
 import { getBaseExplorerUrl } from '@/lib/blockchain/base-config'
 import { ConfirmationData } from './ConfirmationBubble'
+import { SwapData } from './SwapBubble'
 
 interface Message {
-  role: 'user' | 'assistant' | 'confirmation'
+  role: 'user' | 'assistant' | 'confirmation' | 'swap'
   content: string
   timestamp: Date
   confirmationData?: ConfirmationData
+  swapData?: SwapData
   status?: 'pending' | 'success' | 'error'
   txHash?: string
 }
@@ -201,15 +203,62 @@ export function ChatInterface() {
           setMessages((prev) => [...prev, assistantMessage])
         }
       } else if (intent.action === 'swap') {
-        // Show transaction preview for swap actions (not implemented yet)
-        const aiResponse = generateResponse(intent, userInput)
-        
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: new Date(),
+        // Handle swap action
+        if (!address) {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: '❌ Please connect your wallet first to swap tokens.',
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, assistantMessage])
+          setIsLoading(false)
+          return
         }
-        setMessages((prev) => [...prev, assistantMessage])
+
+        // Call swap tool to prepare transaction
+        const swapToolResponse = await fetch('/api/ai/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            message: userInput,
+            walletAddress: address
+          }),
+        })
+
+        const swapToolResult = await swapToolResponse.json()
+        const parsedResult = JSON.parse(swapToolResult.response)
+
+        if (parsedResult.success) {
+          // Create swap message with inline confirmation
+          const swapMessage: Message = {
+            role: 'swap',
+            content: `🔄 Ready to swap ${parsedResult.amount} ${parsedResult.sellToken}`,
+            timestamp: new Date(),
+            swapData: {
+              sellToken: parsedResult.sellToken,
+              buyToken: parsedResult.buyToken,
+              amount: parsedResult.amount,
+              sellTokenAddress: parsedResult.sellTokenAddress,
+              buyTokenAddress: parsedResult.buyTokenAddress,
+              sellTokenDecimals: parsedResult.sellTokenDecimals,
+              buyTokenDecimals: parsedResult.buyTokenDecimals,
+              estimatedOutput: parsedResult.estimatedOutput,
+              rate: parsedResult.rate,
+              slippage: parsedResult.slippage,
+            },
+            status: 'pending',
+          }
+          setMessages((prev) => [...prev, swapMessage])
+        } else {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: `❌ ${parsedResult.message}`,
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, assistantMessage])
+        }
       } else {
         // Handle help and other actions
         const aiResponse = generateResponse(intent, userInput)
@@ -303,6 +352,62 @@ export function ChatInterface() {
     }))
   }
 
+  const handleSwapSuccess = async (swapData: SwapData) => {
+    if (!address) return
+
+    // Store swap transaction in database via API
+    try {
+      await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: address,
+          txHash: `swap_${Date.now()}`, // Temporary hash, will be updated
+          type: 'swap',
+          tokenSymbol: swapData.sellToken,
+          amount: swapData.amount,
+          status: 'pending',
+          network: 'base',
+          metadata: {
+            buyToken: swapData.buyToken,
+            estimatedOutput: swapData.estimatedOutput,
+            rate: swapData.rate,
+          },
+        }),
+      })
+    } catch (error) {
+      console.error('Error storing swap transaction:', error)
+    }
+
+    // Update the swap message to show success
+    setMessages((prev) => prev.map((msg) => {
+      if (msg.role === 'swap' && msg.swapData === swapData) {
+        return {
+          ...msg,
+          status: 'success' as const,
+          content: `✨ Swapped ${swapData.amount} ${swapData.sellToken} for ${swapData.estimatedOutput} ${swapData.buyToken} successfully!`,
+        }
+      }
+      return msg
+    }))
+  }
+
+  const handleSwapError = (error: string, swapData: SwapData) => {
+    // Update the swap message to show error
+    setMessages((prev) => prev.map((msg) => {
+      if (msg.role === 'swap' && msg.swapData === swapData) {
+        return {
+          ...msg,
+          status: 'error' as const,
+          content: `❌ Swap failed. Please try again.`,
+        }
+      }
+      return msg
+    }))
+  }
+
   const generateResponse = (intent: any, userInput: string): string => {
     switch (intent.action) {
       case 'send':
@@ -355,6 +460,9 @@ Or type "help" for more examples!`
             onConfirm={handleSendSuccess}
             onCancel={() => {}}
             onError={handleSendError}
+            onSwapConfirm={handleSwapSuccess}
+            onSwapCancel={() => {}}
+            onSwapError={handleSwapError}
           />
         ))}
           {isLoading && (
