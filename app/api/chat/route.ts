@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date()
     })
     
-    // Fetch portfolio data
+    // Fetch portfolio data asynchronously (non-blocking)
     let portfolio: Array<{
       symbol: string
       balance: string
@@ -35,12 +35,26 @@ export async function POST(request: NextRequest) {
     }> = []
     let recentTransactions: Array<any> = []
     
-    try {
-      portfolio = await fetchPortfolio(userId)
-      console.log('Fetched portfolio:', portfolio)
-    } catch (error) {
+    // Start portfolio fetch but don't wait for it
+    const portfolioPromise = fetchPortfolio(userId).catch(error => {
       console.error('Error fetching portfolio:', error)
-      // Continue with empty portfolio if fetch fails
+      return []
+    })
+    
+    // For balance-related questions, wait for portfolio
+    const isBalanceQuestion = message.toLowerCase().includes('balance') || 
+                             message.toLowerCase().includes('portfolio') ||
+                             message.toLowerCase().includes('eth') ||
+                             message.toLowerCase().includes('token')
+    
+    if (isBalanceQuestion) {
+      try {
+        portfolio = await portfolioPromise
+        console.log('Fetched portfolio for balance question:', portfolio)
+      } catch (error) {
+        console.error('Error fetching portfolio for balance question:', error)
+        portfolio = []
+      }
     }
     
     // Prepare context

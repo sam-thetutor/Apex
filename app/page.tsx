@@ -14,90 +14,51 @@ export default function Home() {
           }}></div>
         </div>
 
-        <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+        <div className="relative max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="text-center">
-            {/* Main Headline */}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Onboarding 1 Million Africans to Base
-            </h1>
-            
-            {/* Subheadline */}
-            <p className="text-xl md:text-2xl text-cyan-50 mb-8 max-w-3xl mx-auto">
-              AI-powered crypto made simple. Send money, learn blockchain, build the future - all in your language.
-            </p>
-
-            {/* Key Features */}
-            <div className="flex flex-col md:flex-row gap-4 justify-center mb-12 max-w-3xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="flex items-center gap-2 text-white">
-                  <span className="text-2xl">🤖</span>
-                  <span className="font-medium">AI Chat - Do crypto transactions with simple prompts</span>
-                </div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="flex items-center gap-2 text-white">
-                  <span className="text-2xl">📚</span>
-                  <span className="font-medium">Learn Base blockchain in 10+ African languages</span>
-                </div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="flex items-center gap-2 text-white">
-                  <span className="text-2xl">💰</span>
-                  <span className="font-medium">Send money for $0.01 instead of $15</span>
-                </div>
-              </div>
+            {/* Main Brand */}
+            <div className="mb-12">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 leading-tight">
+                APEX
+              </h1>
+              <p className="text-xl md:text-2xl text-white/90 font-medium">
+                Your AI Guide to Base Blockchain
+              </p>
             </div>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 max-w-md mx-auto">
               <Link
                 href="/chat"
-                className="px-8 py-4 bg-white text-cyan-600 rounded-full font-bold text-lg hover:bg-cyan-50 transition-all shadow-2xl hover:shadow-white/50 hover:scale-105"
+                className="px-8 py-4 bg-white text-cyan-600 rounded-xl font-semibold text-lg hover:bg-white/90 transition-all shadow-lg"
               >
-                Try AI Chat
+                Start Chatting
               </Link>
               <Link
                 href="/learn"
-                className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-full font-bold text-lg hover:bg-white/10 transition-all"
+                className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition-all"
               >
-                Explore Tutorials
+                Learn Base
               </Link>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mb-8">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">1,000+</div>
-                <div className="text-sm text-cyan-100">Africans on Base</div>
+            {/* Feature Highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all">
+                <div className="text-3xl mb-3">🤖</div>
+                <h3 className="text-lg font-semibold text-white mb-2">AI Assistant</h3>
+                <p className="text-white/80 text-sm">Chat with AI to perform crypto tasks</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">$500K+</div>
-                <div className="text-sm text-cyan-100">Saved in fees</div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all">
+                <div className="text-3xl mb-3">📚</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Learn Base</h3>
+                <p className="text-white/80 text-sm">Master blockchain step by step</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">50+</div>
-                <div className="text-sm text-cyan-100">Countries reached</div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all">
+                <div className="text-3xl mb-3">🚀</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Build Wealth</h3>
+                <p className="text-white/80 text-sm">Grow your crypto portfolio</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <div className="text-3xl font-bold text-white mb-1">99.9%</div>
-                <div className="text-sm text-cyan-100">Cheaper than banks</div>
-              </div>
-            </div>
-
-            {/* Language Support */}
-            <div className="flex flex-wrap gap-2 justify-center items-center">
-              <span className="text-white font-medium">🌍 Available in:</span>
-              <span className="text-2xl">🇬🇧</span>
-              <span className="text-2xl">🇹🇿</span>
-              <span className="text-2xl">🇫🇷</span>
-              <span className="text-2xl">🇳🇬</span>
-              <span className="text-2xl">🇳🇬</span>
-              <span className="text-2xl">🇪🇹</span>
-              <span className="text-2xl">🇿🇦</span>
-              <span className="text-2xl">🇬🇭</span>
-              <span className="text-2xl">🇰🇪</span>
-              <span className="text-2xl">🇺🇬</span>
-              <span className="text-white/80 text-sm">+more</span>
             </div>
           </div>
         </div>

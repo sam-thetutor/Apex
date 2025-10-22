@@ -132,33 +132,33 @@ export default function AchievementsPage() {
       <div className="max-w-[1280px] mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Your Achievements
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+          <p className="text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
             Track your progress as you master Base blockchain for Africa
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-6 text-center">
-            <div className="text-3xl font-bold text-cyan-600 dark:text-cyan-400 mb-2">
+          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-4 md:p-6 text-center">
+            <div className="text-xl md:text-2xl lg:text-3xl font-bold text-cyan-600 dark:text-cyan-400 mb-2">
               {unlockedCount}/{BASE_ACHIEVEMENTS.length}
             </div>
-            <div className="text-gray-600 dark:text-gray-400">Achievements Unlocked</div>
+            <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">Achievements Unlocked</div>
           </div>
-          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-6 text-center">
-            <div className="text-3xl font-bold text-teal-600 dark:text-teal-400 mb-2">
+          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-4 md:p-6 text-center">
+            <div className="text-xl md:text-2xl lg:text-3xl font-bold text-teal-600 dark:text-teal-400 mb-2">
               {totalPoints}
             </div>
-            <div className="text-gray-600 dark:text-gray-400">Total Points</div>
+            <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">Total Points</div>
           </div>
-          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-6 text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+          <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-4 md:p-6 text-center">
+            <div className="text-xl md:text-2xl lg:text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
               {africanAchievementsUnlocked}
             </div>
-            <div className="text-gray-600 dark:text-gray-400">African Achievements</div>
+            <div className="text-xs md:text-sm text-gray-600 dark:text-gray-400">African Achievements</div>
           </div>
         </div>
 

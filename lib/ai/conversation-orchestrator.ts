@@ -1,16 +1,11 @@
-import { ChatOpenAI } from '@langchain/openai'
+import Groq from 'groq-sdk'
 import { sendTool } from '@/lib/ai/tools/send-tool'
 import { swapTool } from '@/lib/ai/tools/swap-tool'
 import { getRelevantContext, buildQuestionPrompt } from './context-helper'
+import { pineconeKnowledgeService } from '@/lib/vector/pinecone-knowledge'
 
-const llm = new ChatOpenAI({
-  modelName: 'gpt-4',
-  temperature: 0.3,
-})
-
-const questionLlm = new ChatOpenAI({
-  modelName: 'gpt-4',
-  temperature: 0.7, // Higher temperature for more creative/helpful answers
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || 'dummy-key-for-build'
 })
 
 interface ConversationContext {
@@ -49,11 +44,13 @@ User's Portfolio: ${JSON.stringify(context.portfolio, null, 2)}
 Recent Transactions: ${context.recentTransactions.length} transactions
 
 Determine the intent from these options:
-1. "send" - User wants to send/transfer tokens
-2. "swap" - User wants to exchange/swap tokens
-3. "balance" - User wants to check balance/portfolio
-4. "question" - User has a general question
+1. "send" - User wants to send/transfer tokens (must include recipient address or "to")
+2. "swap" - User wants to exchange/swap tokens (must include "for", "to", or "with")
+3. "balance" - User wants to check balance/portfolio (includes "how much", "balance", "portfolio")
+4. "question" - User has a general question (includes "what", "how", "why", "explain", "tell me")
 5. "add_token" - User wants to add a custom token to their portfolio
+
+CRITICAL: Questions like "what is base", "how does base work", "explain base" should ALWAYS be classified as "question" intent, NOT "send" intent.
 
 Extract any relevant entities (token symbols, amounts, addresses).
 
@@ -63,9 +60,11 @@ IMPORTANT: For swap intents, extract:
 - amount: The amount to sell
 
 Examples:
-"swap 0.5 ETH for USDC" → {"intent":"swap","entities":{"sellToken":"ETH","buyToken":"USDC","amount":"0.5"}}
-"swap eth to usdc" → {"intent":"swap","entities":{"sellToken":"ETH","buyToken":"USDC","amount":""}}
-"swap 100 USDC for DAI" → {"intent":"swap","entities":{"sellToken":"USDC","buyToken":"DAI","amount":"100"}}
+"what is base" → {"intent":"question","entities":{},"confidence":0.95,"needsClarification":false,"clarificationQuestion":""}
+"how does base work" → {"intent":"question","entities":{},"confidence":0.95,"needsClarification":false,"clarificationQuestion":""}
+"send 100 USDC to 0x123..." → {"intent":"send","entities":{"token":"USDC","amount":"100","recipient":"0x123..."},"confidence":0.95,"needsClarification":false,"clarificationQuestion":""}
+"swap 0.5 ETH for USDC" → {"intent":"swap","entities":{"sellToken":"ETH","buyToken":"USDC","amount":"0.5"},"confidence":0.95,"needsClarification":false,"clarificationQuestion":""}
+"how much ETH do I have" → {"intent":"balance","entities":{},"confidence":0.95,"needsClarification":false,"clarificationQuestion":""}
 
 Respond with ONLY valid JSON:
 {
@@ -76,8 +75,12 @@ Respond with ONLY valid JSON:
   "clarificationQuestion": ""
 }`
 
-    const intentResponse = await llm.invoke(intentPrompt)
-    const intentResult = JSON.parse(intentResponse.content as string)
+    const intentResponse = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: intentPrompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.3,
+    })
+    const intentResult = JSON.parse(intentResponse.choices[0].message.content as string)
 
     // Handle based on intent
     if (intentResult.intent === 'send') {
@@ -330,18 +333,53 @@ async function handleQuestionIntent(
   context: ConversationContext
 ) {
   try {
+    // Search for relevant Base knowledge with timeout
+    const baseKnowledgePromise = pineconeKnowledgeService.searchSimilar(message, 3)
+    const timeoutPromise = new Promise<any[]>((_, reject) => 
+      setTimeout(() => reject(new Error('Knowledge search timeout')), 1500)
+    )
+    
+    let baseKnowledge: any[] = []
+    try {
+      baseKnowledge = await Promise.race([baseKnowledgePromise, timeoutPromise])
+    } catch (error) {
+      console.log('Knowledge search timed out, using fallback')
+      baseKnowledge = []
+    }
+    
     // Determine what context is relevant
     const relevantContext = getRelevantContext(message, context)
     
-    // Build dynamic prompt with only relevant context
-    const prompt = buildQuestionPrompt(message, context, relevantContext)
+    // Build enhanced prompt with Base knowledge
+    const prompt = buildEnhancedQuestionPrompt(message, context, relevantContext, baseKnowledge)
     
-    // Use questionLlm (higher temperature) for more helpful answers
-    const response = await questionLlm.invoke(prompt)
+    // Use Groq with timeout
+    const responsePromise = groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+    })
+    const responseTimeoutPromise = new Promise<any>((_, reject) => 
+      setTimeout(() => reject(new Error('AI response timeout')), 1500)
+    )
+    
+    let response: any
+    try {
+      response = await Promise.race([responsePromise, responseTimeoutPromise])
+    } catch (error) {
+      console.log('AI response timed out, using fallback')
+      // Fallback response based on common questions
+      const fallbackResponse = getFallbackResponse(message)
+      return {
+        intent: 'question',
+        response: fallbackResponse,
+        needsAction: false
+      }
+    }
     
     return {
       intent: 'question',
-      response: response.content as string,
+      response: response.choices[0].message.content as string,
       needsAction: false
     }
   } catch (error) {
@@ -352,5 +390,101 @@ async function handleQuestionIntent(
       needsAction: false
     }
   }
+}
+
+function getFallbackResponse(message: string): string {
+  const lowerMessage = message.toLowerCase()
+  
+  // Base blockchain questions
+  if (lowerMessage.includes('what is base') || lowerMessage.includes('base blockchain') || lowerMessage.includes('what is base blockchain')) {
+    return "Base is a Layer 2 blockchain built on Ethereum that offers low fees (less than $0.01), fast transactions, and high security through Optimistic Rollup technology. It's designed to be the foundation for Coinbase's onchain products and an open ecosystem for anyone to build on. 🚀"
+  }
+  
+  // Benefits and advantages
+  if (lowerMessage.includes('benefit') || lowerMessage.includes('advantage') || lowerMessage.includes('why use base') || lowerMessage.includes('base advantages')) {
+    return "Base benefits include: Low transaction fees under $0.01, near-instant finality, Ethereum security, developer-friendly tools, Coinbase integration, and regulatory compliance. It's perfect for both users and developers! 💰"
+  }
+  
+  // How it works
+  if ((lowerMessage.includes('how') && lowerMessage.includes('work')) || lowerMessage.includes('how base works') || lowerMessage.includes('base technology')) {
+    return "Base uses Optimistic Rollup technology to process transactions off-chain and then batch them to Ethereum mainnet for security. This provides fast, cheap, and secure transactions while maintaining Ethereum's security guarantees. ⚡"
+  }
+  
+  // Sending tokens
+  if (lowerMessage.includes('send') || lowerMessage.includes('transfer') || lowerMessage.includes('how to send') || lowerMessage.includes('send tokens')) {
+    return "To send tokens on Base: 1) Connect your wallet, 2) Select the token to send, 3) Enter recipient address, 4) Enter amount, 5) Confirm transaction. Fees are typically under $0.01! 💸"
+  }
+  
+  // DeFi questions
+  if (lowerMessage.includes('defi') || lowerMessage.includes('decentralized') || lowerMessage.includes('yield farming') || lowerMessage.includes('liquidity')) {
+    return "Base supports DeFi protocols including DEXs, lending platforms, yield farming, and liquidity pools. Popular protocols include Uniswap, Aave, and Compound. You can access all major DeFi services with low fees! 🏦"
+  }
+  
+  // Fees and costs
+  if (lowerMessage.includes('fee') || lowerMessage.includes('cost') || lowerMessage.includes('gas') || lowerMessage.includes('expensive')) {
+    return "Base transaction fees are incredibly low - typically under $0.01! This is much cheaper than Ethereum mainnet and other Layer 2 solutions. The low fees make Base perfect for frequent transactions and DeFi activities. 💰"
+  }
+  
+  // Security questions
+  if (lowerMessage.includes('secure') || lowerMessage.includes('safe') || lowerMessage.includes('security') || lowerMessage.includes('audit')) {
+    return "Base is highly secure because it inherits Ethereum's security through Optimistic Rollup technology. It has undergone multiple security audits and has a bug bounty program. Your funds are as secure as on Ethereum mainnet! 🔒"
+  }
+  
+  // Speed and performance
+  if (lowerMessage.includes('fast') || lowerMessage.includes('speed') || lowerMessage.includes('quick') || lowerMessage.includes('instant')) {
+    return "Base offers near-instant transaction finality! Transactions are processed quickly and efficiently, making it perfect for real-time applications and frequent trading. ⚡"
+  }
+  
+  // Developer questions
+  if (lowerMessage.includes('develop') || lowerMessage.includes('build') || lowerMessage.includes('dapp') || lowerMessage.includes('smart contract')) {
+    return "Base is developer-friendly with full Ethereum compatibility. You can deploy existing Ethereum dApps with minimal changes. It supports all standard Ethereum tools and has comprehensive documentation. 💻"
+  }
+  
+  // General Base questions
+  if (lowerMessage.includes('base') && (lowerMessage.includes('?') || lowerMessage.includes('what') || lowerMessage.includes('tell me'))) {
+    return "Base is Coinbase's Layer 2 blockchain built on Ethereum. It offers ultra-low fees (under $0.01), fast transactions, and Ethereum-level security. Perfect for DeFi, NFTs, and everyday crypto transactions! 🚀"
+  }
+  
+  return "I'm APEX, your AI guide to Base blockchain! I can help you with questions about Base, sending tokens, DeFi, and more. Base offers low fees (under $0.01), fast transactions, and Ethereum security. What would you like to know? 🤖"
+}
+
+function buildEnhancedQuestionPrompt(
+  message: string,
+  context: ConversationContext,
+  relevantContext: any,
+  baseKnowledge: any[]
+): string {
+  // Build Base knowledge context
+  const baseKnowledgeContext = baseKnowledge.length > 0 
+    ? `\n\nBase Blockchain Knowledge:\n${baseKnowledge.map(k => `- ${k.title}: ${k.content}`).join('\n\n')}`
+    : ''
+
+  return `You are APEX, an AI assistant specialized in Base blockchain and crypto. You help users with:
+
+1. **Base Blockchain Questions**: Explain Base features, how it works, benefits, etc.
+2. **Crypto Operations**: Send tokens, swap tokens, check balances
+3. **Portfolio Management**: Track investments, analyze performance
+4. **General Crypto Education**: Explain concepts, provide guidance
+
+User's Question: "${message}"
+
+${baseKnowledgeContext}
+
+User Context:
+- Wallet Address: ${context.userAddress}
+- Portfolio: ${JSON.stringify(context.portfolio, null, 2)}
+- Recent Transactions: ${context.recentTransactions.length} transactions
+
+${relevantContext ? `Additional Context:\n${JSON.stringify(relevantContext, null, 2)}` : ''}
+
+Instructions:
+- If the question is about Base blockchain, prioritize the Base knowledge provided above
+- Be helpful, accurate, and educational
+- Use emojis to make responses engaging
+- If you don't know something, say so and suggest where to find more info
+- For technical questions, provide clear explanations
+- For transaction questions, guide them through the process
+
+Respond in a friendly, helpful tone:`
 }
 

@@ -64,12 +64,12 @@ export function Navbar() {
   return (
     <>
       {/* Top Bar - Logo and Wallet Connection */}
-      <nav className="bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-lg sticky top-0 z-50">
+      <nav className="bg-white border-b border-gray-200 shadow-lg sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white text-lg font-bold">A</span>
               </div>
             </Link>
@@ -82,7 +82,7 @@ export function Navbar() {
                   href={item.href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     pathname === item.href
-                      ? 'bg-primary-50 text-primary-700'
+                      ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
@@ -102,7 +102,7 @@ export function Navbar() {
                 <button
                   onClick={connectWallet}
                   disabled={isLoading}
-                  className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
                 >
                   {isLoading ? 'Connecting...' : 'Connect Wallet'}
                 </button>
@@ -113,7 +113,7 @@ export function Navbar() {
       </nav>
 
       {/* Bottom Navigation Bar - Mobile Only */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-white/20 shadow-2xl z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-50">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => (
             <Link
@@ -121,7 +121,7 @@ export function Navbar() {
               href={item.href}
               className={`flex-1 flex flex-col items-center justify-center h-full transition-colors ${
                 pathname === item.href
-                  ? 'text-primary-600'
+                  ? 'text-blue-600'
                   : 'text-gray-600'
               }`}
             >

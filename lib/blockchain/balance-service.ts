@@ -94,8 +94,12 @@ export async function fetchTokenBalance(
     }
   } catch (error) {
     console.error('Error fetching token balance:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    throw new Error(`Failed to fetch token balance: ${errorMessage}`)
+    // Return empty balance instead of throwing error
+    return {
+      balance: '0.000000',
+      usdValue: '0.00',
+      symbol: 'UNKNOWN',
+    }
   }
 }
 

@@ -104,6 +104,8 @@ export default function TutorialDetailPage() {
   }
 
   const handleExamNext = () => {
+    if (!tutorial) return
+    
     if (currentExamQuestion < tutorial.exam.questions.length - 1) {
       setCurrentExamQuestion(prev => prev + 1)
     } else {
@@ -191,6 +193,8 @@ export default function TutorialDetailPage() {
   }
 
   if (showExam) {
+    if (!tutorial) return null
+    
     const examQuestion = tutorial.exam.questions[currentExamQuestion]
     const isLastExamQuestion = currentExamQuestion === tutorial.exam.questions.length - 1
     
@@ -501,10 +505,10 @@ export default function TutorialDetailPage() {
           <div className="flex items-center gap-4 mb-4">
             <div className="text-5xl">{tutorial?.icon || '📚'}</div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {tutorialTitle}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">{tutorialDescription}</p>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">{tutorialDescription}</p>
             </div>
           </div>
           {tutorial && (
@@ -546,12 +550,12 @@ export default function TutorialDetailPage() {
         </div>
 
         {/* Content */}
-        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl border border-white/40 dark:border-gray-700/40 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md rounded-2xl border border-white/40 dark:border-gray-700/40 p-6 md:p-8 mb-8">
+          <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-4">
             {step.title}
           </h2>
           
-          <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line mb-8">
+          <div className="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line mb-6">
             {step.content}
           </div>
 
@@ -559,7 +563,7 @@ export default function TutorialDetailPage() {
           {isQuiz && step.quizQuestion && (
             <div className="mt-8">
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   {step.quizQuestion.question}
                 </h3>
                 <div className="space-y-3">

@@ -70,7 +70,7 @@ export async function addSampleUsers() {
     return { success: true, count: sampleUsers.length }
   } catch (error) {
     console.error('Error adding sample users:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }
 
