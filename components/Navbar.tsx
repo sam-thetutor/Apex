@@ -65,7 +65,7 @@ export function Navbar() {
     <>
       {/* Top Bar - Logo and Wallet Connection */}
       <nav className="bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-[1280px] mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">

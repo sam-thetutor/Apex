@@ -62,7 +62,7 @@ export default function LearnPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-8 pb-24 md:pb-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1280px] mx-auto">
         {/* Header */}
         {/* <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
